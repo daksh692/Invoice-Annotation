@@ -176,4 +176,4 @@ Standard COCO boxes with categories derived from class names. No text values inc
 ---
 
 ## License
-Private project. All rights reserved (adjust if you want it open source).
+Private project. All rights reserved (Daksh Shah).
