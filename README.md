@@ -1,82 +1,152 @@
-# Invoice Annotator (Offline, Vanilla JS)
+Invoice Annotator (Offline, Vanilla JS) — v1.2
 
-A lightweight, production-ready invoice annotation tool that runs 100% offline by opening `index.html`. Load an invoice **image** and a **JSON** object, draw tight bounding boxes for fields, and export:
+A lightweight, 100% offline invoice annotation tool. Load an invoice image and a JSON skeleton, draw tight boxes for each field, and export:
 
-- ✅ Annotated PNG (`<base>-annotated.png`)
-- ✅ Training labels JSON (`<base>-labels.json`)
-- ✅ Optional COCO JSON (`<base>-coco.json`)
+✅ Annotated PNG (<base>-annotated.png)
 
-No OCR, no model inference — just precise, human labeling.
+✅ Training labels JSON (<base>-labels.json)
 
----
+✅ Optional COCO JSON (<base>-coco.json)
 
-## Features
+✅ Updated Invoice JSON with OCR’d values (<base>-invoice-updated.json) ← new in v1.2
 
-- **Zero install:** open `index.html` directly
-- **True pixel coords:** integer `[x,y,w,h]` in image space (origin top-left)
-- **Zoom & pan:** Ctrl+wheel to zoom; hold Space to pan
-- **Draw / select / resize / delete** with 8 handles
-- **Undo/redo** (Ctrl/Cmd+Z / Ctrl/Cmd+Y)
-- **Field-driven UI:** sidebars generated from your JSON; null fields hidden
-- **Line items:** choose index `i` and label per row
-- **Group color coding:**
-  - Buyer `#2563EB`, Seller `#EF4444`, Invoice Meta `#10B981`, Line Items `#F59E0B`, Totals/GST `#8B5CF6`
-- **Visibility toggles:** labels (H), borders (B), fills (F)
-- **Validation on export:** scalar ≤1 box, coords in bounds, omitted null fields listed
-- **Works offline:** no network calls
+What’s new in v1.2
 
----
+In-browser OCR with Tesseract.js: when you draw a box, it reads the text in that box and sets the annotation’s value.
 
-## Quick Start
+Auto-write into your JSON: that same OCR text is written into the correct path in your loaded JSON (e.g. buyer.company_name, invoice.line_items[0].product_name, etc.). No separate manual editing.
 
-1) **Download** this folder `invoice-annotator/` to your computer.
+OCR controls: Re-OCR selection (right panel) and OCR all boxes (top bar).
 
-2) (Optional) Put your invoice image (PNG/JPG) into `sample/` or anywhere.
+Export Updated Invoice JSON: dumps your live JSON (now filled with OCR’d values).
 
-3) **Open** `index.html` in your browser (double-click).
+Sidebar always shows all fields (even if null), so you can annotate empty ones immediately.
 
-4) Click **Load JSON** → select `sample/sample.json` (or your own).
+Features
 
-5) Click **Load Image** → select your invoice image.
+Zero install: open index.html directly
 
-6) In the left sidebar, **click a field** to arm the drawing tool:
-   - For line items, set **Line item index** on the right, then click the `[i]` field (it becomes `[0]`, `[1]`, ...).
+True pixel coords: integer [x,y,w,h] in image space (origin top-left)
 
-7) **Draw**: Click-drag on the canvas to create a rectangle.  
-   - **Select / move / resize**: click a box, drag it or its handles.  
-   - **Delete**: press `Delete`/`Backspace` or click **Delete** in the right panel.
+Zoom & pan: Ctrl/Cmd + wheel to zoom; hold Space to pan
 
-8) **Export**:
-   - **Save Annotated PNG** → `<base>-annotated.png`
-   - **Export Labels JSON** → `<base>-labels.json` (schema below)
-   - **Export COCO (optional)** → `<base>-coco.json`
+Draw / select / resize / delete with 8 handles
 
----
+Undo/redo (Ctrl/Cmd+Z / Ctrl/Cmd+Y)
 
-## Keyboard Shortcuts
+Field-driven UI: sidebars generated from your schema; line-item index picker
 
-- **Draw:** Click a field button, then drag on canvas
-- **Pan:** Hold **Space** + drag
-- **Zoom:** **Ctrl/Cmd + mouse wheel**
-- **Cancel drawing:** **Esc**
-- **Undo / Redo:** **Ctrl/Cmd+Z**, **Ctrl/Cmd+Y**
-- **Delete selection:** **Del** / **Backspace**
-- **Toggle labels:** **H**
-- **Toggle borders:** **B**
-- **Toggle fills:** **F**
+OCR on create: draw a box → OCR runs → annotation.value set → JSON updated at the field path
 
----
+Controls:
 
-## Export Formats
+OCR all boxes
 
-### Labels JSON (custom)
-```json
+Re-OCR selection
+
+Export Updated Invoice JSON
+
+Group colors:
+
+Buyer #2563EB, Seller #EF4444, Invoice Meta #10B981, Line Items #F59E0B, Totals/GST #8B5CF6
+
+Visibility toggles: labels (H), borders (B), fills (F)
+
+Validation: flags out-of-bounds boxes, scalar fields with 0 or >1 boxes, and lists omitted null fields
+
+Works offline: no servers, no network calls (Tesseract runs in the browser)
+
+Quick Start
+
+Open index.html in your browser (double-click).
+
+Click Load JSON → select your schema (e.g. sample/sample.json with null placeholders).
+
+Click Load Image → select your invoice image (PNG/JPG).
+
+In the left sidebar, click a field to arm the drawing tool.
+
+For line items, set Line item index on the right (e.g. 0, 1, …) then click a line-item field [i] (it will arm as [0], [1], etc.).
+
+Draw a tight box around the field text.
+
+On mouseup, OCR runs automatically and sets the box’s value, then writes it into your JSON at that field path.
+
+Adjust boxes as needed: click to select, drag to move, drag handles to resize. Use Re-OCR selection if you resize significantly.
+
+Export:
+
+Save Annotated PNG → <base>-annotated.png
+
+Export Labels JSON → <base>-labels.json
+
+Export Updated Invoice JSON → <base>-invoice-updated.json (v1.2)
+
+Export COCO (optional) → <base>-coco.json
+
+Buttons & Panels (v1.2)
+
+Top bar (left): Load Image, Load JSON, Reset, OCR all boxes
+
+Top bar (right): Save Annotated PNG, Export Labels JSON, Export Updated Invoice JSON, Export COCO
+
+Right panel:
+
+Armed Field: currently selected field path
+
+Line item index: picker for [i] fields
+
+Selection: shows Label, Value (OCR result), BBox; actions: Re-OCR selection, Delete
+
+Validation: live warnings/omissions summary
+
+Keyboard Shortcuts
+
+Draw: click a field button, then drag on canvas
+
+Pan: hold Space + drag
+
+Zoom: Ctrl/Cmd + mouse wheel
+
+Cancel drawing: Esc
+
+Undo / Redo: Ctrl/Cmd+Z, Ctrl/Cmd+Y
+
+Delete selection: Del / Backspace
+
+Toggle labels: H
+
+Toggle borders: B
+
+Toggle fills: F
+
+Data Flow in v1.2 (important)
+
+You draw a box for a field (e.g. buyer.company_name).
+
+The app crops that region from the image and runs Tesseract.js OCR.
+
+The OCR text is written to:
+
+the annotation’s value, and
+
+the loaded JSON at the correct path (e.g. buyer.company_name, invoice.line_items[0].product_name).
+
+On export, you get:
+
+Labels JSON (with per-box values)
+
+Updated Invoice JSON (your original schema with those values filled in)
+Labels JSON (custom)
+
+Includes each annotation with its value from OCR:
+
 {
   "image": { "filename": "invoice.png", "width": 1800, "height": 2400, "pages": 1 },
   "classes": [
     "buyer.company_name","buyer.address","buyer.gstin",
     "seller.company_name","seller.address","seller.gstin",
-    "invoice.bill_no","invoice.date","invoice.raw_date","invoice.currency",
+    "invoice.bill_no","invoice.date",
     "invoice.line_items[i].product_name","invoice.line_items[i].unit","invoice.line_items[i].quantity","invoice.line_items[i].unit_price","invoice.line_items[i].line_total_printed",
     "invoice.subtotal_printed",
     "invoice.gst_breakdown.cgst_percent","invoice.gst_breakdown.cgst_amount",
@@ -96,7 +166,61 @@ No OCR, no model inference — just precise, human labeling.
     }
   ],
   "notes": {
-    "warnings": ["Printed total differs from calculated due to rounding"],
+    "warnings": [],
     "omitted_null_fields": []
   }
 }
+
+3) COCO JSON (optional)
+
+Standard COCO boxes with categories derived from class names. No text values included.
+
+Tesseract.js (OCR) Notes
+
+Language: default is 'eng'. To support other languages, change the recognize call to load the language(s) you need and ensure the traineddata is available.
+
+Quality: good OCR depends on tight boxes, clean scans, and decent resolution. If the box is loose or rotated, expect errors.
+
+Re-OCR: after resizing a box, use Re-OCR selection to refresh the value.
+
+Tips for Accurate Annotations
+
+Draw tight — don’t include extra columns, grid lines, or neighboring words.
+
+Use zoom (Ctrl/Cmd + wheel) for small fonts.
+
+Line items: for multiple product rows, set the line-item index correctly before drawing each set of fields.
+
+Quantities vs count: the validator reminds you if you’ve boxed multiple product names under the same line index without a matching quantity.
+
+Common Issues
+
+“hitTestHandle is not defined”: you’re missing the resize-handle helpers. Add hitTestHandle and cursorForHandle (already included in the v1.2 app.js patch).
+
+OCR slow on huge images: run OCR all boxes only after you place boxes; or resize/scaling your input images to a sensible DPI.
+
+Numbers as strings: by design, OCR writes raw text. Add normalization if you need numeric types in the updated JSON.
+
+Version History
+
+v1.2
+
+Added in-browser OCR (Tesseract.js)
+
+Auto-write OCR results into loaded JSON
+
+Added OCR all boxes, Re-OCR selection, Export Updated Invoice JSON
+
+Sidebar shows all fields (even when null)
+
+v1.1
+
+Core annotator: boxes, exports (PNG, labels, COCO), validation, line-item indexing
+
+v1.0
+
+Initial canvas + basic exports
+
+License
+
+Private project. All rights reserved.
