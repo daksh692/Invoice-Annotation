@@ -5,6 +5,8 @@
     <title>Invoice Annotator (Offline)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="./styles.css" />
+    <!-- Tesseract.js (client-side OCR) -->
+    <script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
   </head>
   <body>
     <header class="topbar" role="toolbar" aria-label="Annotation toolbar">
@@ -26,6 +28,7 @@
           aria-label="Choose invoice JSON"
         />
         <button id="btnReset" class="btn">Reset</button>
+        <button id="btnOCRAll" class="btn">OCR all boxes</button>
       </div>
       <div class="right">
         <button id="btnExportPNG" class="btn primary">
@@ -33,6 +36,9 @@
         </button>
         <button id="btnExportLabels" class="btn primary">
           Export Labels JSON
+        </button>
+        <button id="btnExportUpdatedJSON" class="btn">
+          Export Updated Invoice JSON
         </button>
         <button id="btnExportCOCO" class="btn">Export COCO (optional)</button>
       </div>
@@ -121,6 +127,7 @@
           <h3>Selection</h3>
           <div id="selectionInfo">No selection</div>
           <div class="selection-actions">
+            <button id="btnReOCR" class="btn">Re-OCR selection</button>
             <button id="btnDelete" class="btn danger" disabled>
               Delete (Del)
             </button>
@@ -135,7 +142,7 @@
     </main>
 
     <footer class="foot">
-      <small>Invoice Annotator • Offline • v1.1</small>
+      <small>Invoice Annotator • Offline • v1.2</small>
     </footer>
 
     <script src="./app.js"></script>

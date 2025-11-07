@@ -1,0 +1,12 @@
+{
+  "name": "invoice-annotator-vendor-ocr",
+  "private": true,
+  "devDependencies": {
+    "tesseract.js": "4.0.2",
+    "@tesseract.js/core": "5.0.3"
+  },
+  "scripts": {
+    "vendor:ocr": "node tools/vendor-ocr.js",
+    "vendor:lang:eng": "node tools/vendor-ocr.js --lang eng"
+  }
+}
