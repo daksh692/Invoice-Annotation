@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice Annotator (Offline)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar" role="toolbar" aria-label="Annotation toolbar">
+      <div class="left">
+        <button id="btnLoadImage" class="btn">Load Image</button>
+        <input
+          id="fileImage"
+          type="file"
+          accept="image/png,image/jpeg"
+          hidden
+          aria-label="Choose invoice image"
+        />
+        <button id="btnLoadJSON" class="btn">Load JSON</button>
+        <input
+          id="fileJSON"
+          type="file"
+          accept="application/json"
+          hidden
+          aria-label="Choose invoice JSON"
+        />
+        <button id="btnReset" class="btn">Reset</button>
+      </div>
+      <div class="right">
+        <button id="btnExportPNG" class="btn primary">
+          Save Annotated PNG
+        </button>
+        <button id="btnExportLabels" class="btn primary">
+          Export Labels JSON
+        </button>
+        <button id="btnExportCOCO" class="btn">Export COCO (optional)</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside
+        id="sidebarLeft"
+        class="sidebar open"
+        aria-label="Fields left sidebar"
+      >
+        <div class="sidebar-header">
+          <span>Fields</span>
+          <button
+            id="toggleLeft"
+            class="icon-btn"
+            aria-label="Close left sidebar"
+            title="Close"
+          >
+            ⟨
+          </button>
+        </div>
+        <div id="groupsContainer" class="groups"></div>
+      </aside>
+
+      <section class="stage-wrap" aria-live="polite">
+        <div class="canvas-toolbar">
+          <div class="row">
+            <label
+              ><input type="checkbox" id="chkShowLabels" checked /> Show labels
+              (H)</label
+            >
+            <label
+              ><input type="checkbox" id="chkShowBorders" checked /> Show
+              borders (B)</label
+            >
+            <label
+              ><input type="checkbox" id="chkShowFills" /> Show fills (F)</label
+            >
+            <label>Zoom: <span id="zoomPct">100%</span></label>
+          </div>
+          <div class="row hint">
+            🖱️ Drag to draw | ␠ Space+Drag to pan | ⎋ Esc cancel | ⌘/Ctrl+Z /
+            ⌘/Ctrl+Y undo/redo | ⌫/Del delete
+          </div>
+        </div>
+
+        <canvas
+          id="stage"
+          width="1200"
+          height="900"
+          role="img"
+          aria-label="Annotation canvas"
+        ></canvas>
+      </section>
+
+      <aside
+        id="sidebarRight"
+        class="sidebar open"
+        aria-label="Info right sidebar"
+      >
+        <div class="sidebar-header">
+          <span>Info</span>
+          <button
+            id="toggleRight"
+            class="icon-btn"
+            aria-label="Close right sidebar"
+            title="Close"
+          >
+            ⟩
+          </button>
+        </div>
+
+        <div class="panel">
+          <h3>Armed Field</h3>
+          <div id="armedField">None</div>
+          <div class="lineitem-picker" id="lineItemPicker" hidden>
+            <label
+              >Line item index:
+              <input type="number" id="liIndex" min="0" step="1" value="0" />
+            </label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Selection</h3>
+          <div id="selectionInfo">No selection</div>
+          <div class="selection-actions">
+            <button id="btnDelete" class="btn danger" disabled>
+              Delete (Del)
+            </button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Validation</h3>
+          <pre id="validationOutput" class="code"></pre>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="foot">
+      <small>Invoice Annotator • Offline • v1.1</small>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

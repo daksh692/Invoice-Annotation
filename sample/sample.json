@@ -1,0 +1,45 @@
+{
+  "buyer": {
+    "company_name": null,
+    "address": null,
+    "gstin": null
+  },
+  "seller": {
+    "company_name": null,
+    "address": null,
+    "gstin": null
+  },
+  "invoice": {
+    "bill_no": null,
+    "date": null,
+    "line_items": [
+      {
+        "product_name": null,
+        "unit": null,
+        "quantity": null,
+        "unit_price": null,
+        "line_total_printed": null
+      }
+    ],
+    "subtotal_printed": null,
+    "gst_breakdown": {
+      "cgst_percent": null,
+      "cgst_amount": null,
+      "sgst_percent": null,
+      "sgst_amount": null,
+      "other_gst_label": null,
+      "other_gst_percent": null,
+      "other_gst_amount": null
+    },
+    "round_off": null,
+    "grand_total_printed": null
+  },
+  "confidence_notes": {
+    "low_confidence_fields": [],
+    "unparsed_text_snippets": []
+  },
+  "meta": {
+    "source_pages": 1,
+    "warnings": []
+  }
+}
