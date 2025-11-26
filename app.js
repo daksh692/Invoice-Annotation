@@ -904,22 +904,76 @@ document.getElementById("fileImage").addEventListener("change", (e) => {
   fr.readAsDataURL(file);
 });
 
+// Load Labels JSON (re-use the old btnLoadJSON / fileJSON IDs)
 document
   .getElementById("btnLoadJSON")
   .addEventListener("click", () => document.getElementById("fileJSON").click());
+
 document.getElementById("fileJSON").addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
+
   const fr = new FileReader();
   fr.onload = () => {
     try {
-      invoiceData = JSON.parse(fr.result);
-      buildSidebar();
+      const payload = JSON.parse(fr.result);
+
+      if (!payload || !Array.isArray(payload.annotations)) {
+        alert("Invalid labels JSON: missing annotations array.");
+        return;
+      }
+
+      // Restore annotations from labels JSON
+      annotations = payload.annotations.map((a) => {
+        const bbox =
+          Array.isArray(a.bbox) && a.bbox.length === 4 ? a.bbox : [0, 0, 1, 1];
+
+        return {
+          id: a.id || uuid(),
+          label: a.label,
+          value: a.value || "",
+          bbox: withinImage(bbox),
+          page: a.page ?? 0,
+          group_color: a.group_color || colorOf(a.label),
+          confidence: a.confidence || "exact",
+        };
+      });
+
+      // Clear selection & history
+      selectedId = null;
+      history = [];
+      future = [];
+
+      // If labels JSON has image metadata, use it
+      if (payload.image) {
+        if (payload.image.filename) {
+          imageFilename = payload.image.filename;
+        }
+        if (payload.image.width && payload.image.height) {
+          imageW = payload.image.width;
+          imageH = payload.image.height;
+        }
+      }
+
+      // If an invoice JSON is already loaded, sync values back into it
+      if (invoiceData) {
+        for (const ann of annotations) {
+          if (ann.value) {
+            setAtPath(invoiceData, ann.label, ann.value);
+          }
+        }
+      }
+
+      updateCountsUI();
+      updateSelectionUI();
       validateAndShow();
+      fitImageToCanvas();
+      render();
     } catch (err) {
-      alert("Invalid JSON: " + err);
+      alert("Invalid labels JSON: " + err);
     }
   };
+
   fr.readAsText(file, "utf-8");
 });
 

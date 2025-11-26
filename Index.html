@@ -19,17 +19,30 @@
           hidden
           aria-label="Choose invoice image"
         />
-        <button id="btnLoadJSON" class="btn">Load JSON</button>
+
+        <button id="btnLoadJSON" class="btn">Load Labels JSON</button>
         <input
           id="fileJSON"
           type="file"
           accept="application/json"
           hidden
-          aria-label="Choose invoice JSON"
+          aria-label="Choose labels JSON"
         />
+
+        <!-- NEW: Load Labels JSON (edit previous annotations) -->
+        <button id="btnLoadLabels" class="btn">Load Labels JSON</button>
+        <input
+          id="fileLabels"
+          type="file"
+          accept="application/json"
+          hidden
+          aria-label="Choose labels JSON"
+        />
+
         <button id="btnReset" class="btn">Reset</button>
         <button id="btnOCRAll" class="btn">OCR all boxes</button>
       </div>
+
       <div class="right">
         <button id="btnExportPNG" class="btn primary">
           Save Annotated PNG
