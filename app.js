@@ -307,6 +307,24 @@ function countByField() {
   }
   return map;
 }
+function nextLineItemIndexForTemplate(templateKey) {
+  // templateKey looks like "invoice.line_items[i].product_name"
+  // We want to find the max index currently used for this template
+  // and return max + 1. If none, return 0.
+  const basePattern = templateKey.replace("[i]", "\\[(\\d+)\\]");
+  const re = new RegExp("^" + basePattern + "$");
+  let maxIdx = -1;
+
+  for (const a of annotations) {
+    const m = a.label.match(re);
+    if (m) {
+      const idx = parseInt(m[1], 10);
+      if (!Number.isNaN(idx) && idx > maxIdx) maxIdx = idx;
+    }
+  }
+  return maxIdx + 1; // 0 if none used yet
+}
+
 function lineItemCount() {
   const arr = invoiceData?.invoice?.line_items;
   return Array.isArray(arr) ? arr.length : 0;
@@ -382,21 +400,31 @@ function buildSidebar() {
     btn.textContent = displayTitle(templateKey);
     btn.setAttribute("data-key", templateKey);
     btn.style.borderColor = groupColor;
+
     btn.addEventListener("click", () => {
       if (templateKey.includes("[i]")) {
+        // LINE-ITEM FIELD: auto-advance index based on how many of this field already exist
         armedIsLineItem = true;
-        armedLIIndex = parseInt(liIndexInput.value || "0", 10) || 0;
+
+        // Next free index for this specific field (product_name, unit, etc.)
+        const nextIdx = nextLineItemIndexForTemplate(templateKey);
+        armedLIIndex = nextIdx; // e.g. 0, then 1, then 2...
+        liIndexInput.value = String(nextIdx); // update UI
+
         armedLabel = templateKey.replace("[i]", `[${armedLIIndex}]`);
       } else {
+        // SCALAR FIELD
         armedIsLineItem = false;
         armedLabel = templateKey;
       }
+
       armedGroup = groupOf(armedLabel);
       armedColor = colorOf(armedLabel);
       armedFieldEl.textContent = armedLabel;
       lineItemPicker.hidden = !templateKey.includes("[i]");
       highlightButtonForLabel(armedLabel);
     });
+
     return btn;
   };
 
@@ -715,6 +743,19 @@ canvas.addEventListener("mouseup", async (e) => {
       highlightButtonForLabel(ann.label);
       updateCountsUI();
       render();
+
+      // If this was a line-item field, prepare NEXT index automatically
+      if (armedIsLineItem && armedLabel) {
+        // derive base template: invoice.line_items[i].product_name -> with [i]
+        const base = armedLabel.replace(/\[\d+\]/, "[i]");
+        // compute next free index for that template
+        const nextIdx = nextLineItemIndexForTemplate(base);
+        armedLIIndex = nextIdx;
+        liIndexInput.value = String(nextIdx);
+        armedLabel = base.replace("[i]", `[${nextIdx}]`);
+        armedFieldEl.textContent = armedLabel;
+      }
+
       // NEW: auto-OCR on create
       try {
         await ocrAnnotation(ann);
