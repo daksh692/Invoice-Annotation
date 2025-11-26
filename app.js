@@ -1205,7 +1205,7 @@ function drawLabelPillDirect(c2, text, x, y, color) {
   c2.restore();
 }
 function exportLabelsJSON() {
-  const { warnings, omitted } = validate();
+
   const payload = {
     image: {
       filename: imageFilename || "image.png",
@@ -1223,14 +1223,15 @@ function exportLabelsJSON() {
       group_color: a.group_color,
       confidence: a.confidence,
     })),
-    notes: { warnings, omitted_null_fields: omitted },
   };
+
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json",
   });
   const base = (imageFilename || "image").replace(/\.(png|jpg|jpeg)$/i, "");
   triggerDownload(URL.createObjectURL(blob), `${base}-labels.json`);
 }
+
 function exportCOCO() {
   const cats = [];
   const nameToId = {};
