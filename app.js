@@ -10,7 +10,7 @@
 /** ------------------------------
  * Types via JSDoc (unchanged)
  * ------------------------------ */
-/* ... (all typedefs from v1.1 stay the same) ... */
+/* ... typedefs live here in the original project ... */
 
 const COLORS = {
   buyer: "#2563EB",
@@ -142,7 +142,7 @@ let showLabels = true,
   showBorders = true,
   showFills = false;
 let isPanning = false;
-let panStart = { x: 0, y: 0 };
+let panStart = null; // { x, y, panX0, panY0 } when panning
 let mouseDown = false;
 
 /** Drawing state */
@@ -264,8 +264,6 @@ function valueForLabel(label) {
   }
 }
 function setAtPath(obj, path, rawValue) {
-  // Write string values back into invoiceData based on label path.
-  // We keep raw OCR text. (You can add numeric normalization later if you want.)
   const liMatch = path.match(/^invoice\.line_items\[(\d+)\]\.(.+)$/);
   if (liMatch) {
     const idx = parseInt(liMatch[1], 10);
@@ -307,6 +305,21 @@ function countByField() {
   }
   return map;
 }
+function nextLineItemIndexForTemplate(templateKey) {
+  const basePattern = templateKey.replace("[i]", "\\[(\\d+)\\]");
+  const re = new RegExp("^" + basePattern + "$");
+  let maxIdx = -1;
+
+  for (const a of annotations) {
+    const m = a.label.match(re);
+    if (m) {
+      const idx = parseInt(m[1], 10);
+      if (!Number.isNaN(idx) && idx > maxIdx) maxIdx = idx;
+    }
+  }
+  return maxIdx + 1;
+}
+
 function lineItemCount() {
   const arr = invoiceData?.invoice?.line_items;
   return Array.isArray(arr) ? arr.length : 0;
@@ -349,13 +362,11 @@ async function ocrAnnotation(ann) {
   crop.height = Math.max(1, h);
   const cctx = crop.getContext("2d");
   cctx.drawImage(imageEl, x, y, w, h, 0, 0, w, h);
-  // You can set a language here if needed, e.g. { lang: 'eng' }
   const { data } = await Tesseract.recognize(crop, "eng", {
     tessedit_char_whitelist: undefined,
   });
   const text = (data && data.text ? data.text : "").trim().replace(/\s+/g, " ");
   ann.value = text;
-  // write into JSON
   if (invoiceData) setAtPath(invoiceData, ann.label, text || null);
   updateSelectionUI();
   validateAndShow();
@@ -368,7 +379,7 @@ async function ocrAllAnnotations() {
 }
 
 /** ------------------------------
- * Building sidebar (v1.2 shows ALL fields)
+ * Sidebar
  * ------------------------------ */
 function buildSidebar() {
   groupsContainer.innerHTML = "";
@@ -382,21 +393,26 @@ function buildSidebar() {
     btn.textContent = displayTitle(templateKey);
     btn.setAttribute("data-key", templateKey);
     btn.style.borderColor = groupColor;
+
     btn.addEventListener("click", () => {
       if (templateKey.includes("[i]")) {
         armedIsLineItem = true;
-        armedLIIndex = parseInt(liIndexInput.value || "0", 10) || 0;
+        const nextIdx = nextLineItemIndexForTemplate(templateKey);
+        armedLIIndex = nextIdx;
+        liIndexInput.value = String(nextIdx);
         armedLabel = templateKey.replace("[i]", `[${armedLIIndex}]`);
       } else {
         armedIsLineItem = false;
         armedLabel = templateKey;
       }
+
       armedGroup = groupOf(armedLabel);
       armedColor = colorOf(armedLabel);
       armedFieldEl.textContent = armedLabel;
       lineItemPicker.hidden = !templateKey.includes("[i]");
       highlightButtonForLabel(armedLabel);
     });
+
     return btn;
   };
 
@@ -412,16 +428,8 @@ function buildSidebar() {
     `;
     const fieldsEl = wrapper.querySelector(".fields");
 
-    // v1.2: ALWAYS render all field buttons (even when current JSON value is null)
-    if (g.id === "line") {
-      // show line buttons if there is at least one line item OR allow annotator to create from index box
-      for (const f of g.fields) {
-        fieldsEl.appendChild(makeBtn(f, COLORS[g.id]));
-      }
-    } else {
-      for (const f of g.fields) {
-        fieldsEl.appendChild(makeBtn(f, COLORS[g.id]));
-      }
+    for (const f of g.fields) {
+      fieldsEl.appendChild(makeBtn(f, COLORS[g.id]));
     }
 
     groupsContainer.appendChild(wrapper);
@@ -430,7 +438,7 @@ function buildSidebar() {
 }
 
 /** ------------------------------
- * Rendering (unchanged from v1.1)
+ * Rendering
  * ------------------------------ */
 function clearCanvas() {
   ctx.fillStyle = "#0a0f1f";
@@ -508,7 +516,6 @@ function drawHandles(x, y, w, h) {
 }
 
 function cursorForHandle(h) {
-  // Map handle → CSS cursor
   if (h === "n" || h === "s") return "ns-resize";
   if (h === "e" || h === "w") return "ew-resize";
   if (h === "ne" || h === "sw") return "nesw-resize";
@@ -517,8 +524,6 @@ function cursorForHandle(h) {
 }
 
 function hitTestHandle(sel, x, y) {
-  // Returns one of: "nw","n","ne","e","se","s","sw","w" or null
-  // Uses a threshold that shrinks as you zoom in (so it feels consistent).
   const [bx, by, bw, bh] = sel.bbox;
   const x2 = bx + bw,
     y2 = by + bh;
@@ -534,7 +539,6 @@ function hitTestHandle(sel, x, y) {
     { name: "w", px: bx, py: by + bh / 2 },
   ];
 
-  // HANDLE_SIZE is defined above; zoom is global. Add a tiny fudge so it’s easy to grab.
   const t = (HANDLE_SIZE + 2) / (zoom || 1);
 
   for (const h of handles) {
@@ -566,7 +570,7 @@ function hexToRgba(hex, a) {
 }
 
 /** ------------------------------
- * Mouse / keyboard (add OCR on create)
+ * Mouse / keyboard + touch
  * ------------------------------ */
 canvas.addEventListener("mousedown", (e) => {
   const { x, y } = toImageSpace(e.clientX, e.clientY);
@@ -603,18 +607,31 @@ canvas.addEventListener("mousedown", (e) => {
     mouseDown = true;
     pushHistory();
   } else if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+    // middle click or Shift+Left for panning
     isPanning = true;
-    panStart = { x: e.clientX - panX, y: e.clientY - panY };
+    panStart = {
+      x: e.clientX,
+      y: e.clientY,
+      panX0: panX,
+      panY0: panY,
+    };
+    canvas.style.cursor = "grabbing";
   }
 });
+
 canvas.addEventListener("mousemove", (e) => {
   const { x, y } = toImageSpace(e.clientX, e.clientY);
-  if (isPanning) {
-    panX = e.clientX - canvas.getBoundingClientRect().left - panStart.x;
-    panY = e.clientY - canvas.getBoundingClientRect().top - panStart.y;
+
+  // Panning
+  if (isPanning && panStart) {
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+    panX = panStart.panX0 + dx;
+    panY = panStart.panY0 + dy;
     render();
     return;
   }
+
   const sel = annotations.find((a) => a.id === selectedId);
   if (sel) {
     const h = hitTestHandle(sel, x, y);
@@ -625,6 +642,7 @@ canvas.addEventListener("mousemove", (e) => {
       : "default";
   }
   if (!mouseDown) return;
+
   if (currentAction === "creating" && creationStart) {
     const [rx, ry, rw, rh] = rectNormalize(
       creationStart.x,
@@ -687,9 +705,12 @@ canvas.addEventListener("mousemove", (e) => {
     render();
   }
 });
+
 canvas.addEventListener("mouseup", async (e) => {
   mouseDown = false;
   isPanning = false;
+  panStart = null;
+
   if (currentAction === "creating" && creationStart) {
     const { x, y } = toImageSpace(e.clientX, e.clientY);
     let [rx, ry, rw, rh] = rectNormalize(
@@ -703,7 +724,7 @@ canvas.addEventListener("mouseup", async (e) => {
       const ann = /** @type {Annotation} */ ({
         id: uuid(),
         label: armedLabel,
-        value: "", // will be filled by OCR
+        value: "",
         bbox: [rx, ry, rw, rh],
         page: 0,
         group_color: armedColor,
@@ -715,11 +736,20 @@ canvas.addEventListener("mouseup", async (e) => {
       highlightButtonForLabel(ann.label);
       updateCountsUI();
       render();
-      // NEW: auto-OCR on create
+
+      if (armedIsLineItem && armedLabel) {
+        const base = armedLabel.replace(/\[\d+\]/, "[i]");
+        const nextIdx = nextLineItemIndexForTemplate(base);
+        armedLIIndex = nextIdx;
+        liIndexInput.value = String(nextIdx);
+        armedLabel = base.replace("[i]", `[${nextIdx}]`);
+        armedFieldEl.textContent = armedLabel;
+      }
+
       try {
         await ocrAnnotation(ann);
       } catch {
-        /* ignore OCR errors for now */
+        // ignore OCR errors
       }
     }
   } else if (currentAction === "moving") {
@@ -731,9 +761,66 @@ canvas.addEventListener("mouseup", async (e) => {
   resizeHandle = null;
   render();
 });
+
+// Touch → mouse emulation for tablet
+canvas.style.touchAction = "none";
+
+function touchToMouse(type, touchEvent) {
+  const touch =
+    type === "mouseup" ? touchEvent.changedTouches[0] : touchEvent.touches[0];
+  if (!touch) return;
+
+  const mouseEvent = new MouseEvent(type, {
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    button: 0,
+    bubbles: true,
+    cancelable: true,
+  });
+
+  canvas.dispatchEvent(mouseEvent);
+}
+
+canvas.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+    touchToMouse("mousedown", e);
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "touchmove",
+  (e) => {
+    e.preventDefault();
+    touchToMouse("mousemove", e);
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "touchend",
+  (e) => {
+    e.preventDefault();
+    touchToMouse("mouseup", e);
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "touchcancel",
+  (e) => {
+    e.preventDefault();
+    touchToMouse("mouseup", e);
+  },
+  { passive: false }
+);
+
 canvas.addEventListener("mouseleave", () => {
   mouseDown = false;
   isPanning = false;
+  panStart = null;
   currentAction = null;
   creationStart = null;
   resizeHandle = null;
@@ -822,6 +909,7 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => {
   if (e.code === "Space") {
     isPanning = false;
+    panStart = null;
     canvas.style.cursor = "crosshair";
   }
 });
@@ -863,22 +951,72 @@ document.getElementById("fileImage").addEventListener("change", (e) => {
   fr.readAsDataURL(file);
 });
 
+// Load Labels JSON (re-used btnLoadJSON / fileJSON)
 document
   .getElementById("btnLoadJSON")
   .addEventListener("click", () => document.getElementById("fileJSON").click());
+
 document.getElementById("fileJSON").addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
+
   const fr = new FileReader();
   fr.onload = () => {
     try {
-      invoiceData = JSON.parse(fr.result);
-      buildSidebar();
+      const payload = JSON.parse(fr.result);
+
+      if (!payload || !Array.isArray(payload.annotations)) {
+        alert("Invalid labels JSON: missing annotations array.");
+        return;
+      }
+
+      annotations = payload.annotations.map((a) => {
+        const bbox =
+          Array.isArray(a.bbox) && a.bbox.length === 4 ? a.bbox : [0, 0, 1, 1];
+
+        return {
+          id: a.id || uuid(),
+          label: a.label,
+          value: a.value || "",
+          bbox: withinImage(bbox),
+          page: a.page ?? 0,
+          group_color: a.group_color || colorOf(a.label),
+          confidence: a.confidence || "exact",
+        };
+      });
+
+      selectedId = null;
+      history = [];
+      future = [];
+
+      if (payload.image) {
+        if (payload.image.filename) {
+          imageFilename = payload.image.filename;
+        }
+        if (payload.image.width && payload.image.height) {
+          imageW = payload.image.width;
+          imageH = payload.image.height;
+        }
+      }
+
+      if (invoiceData) {
+        for (const ann of annotations) {
+          if (ann.value) {
+            setAtPath(invoiceData, ann.label, ann.value);
+          }
+        }
+      }
+
+      updateCountsUI();
+      updateSelectionUI();
       validateAndShow();
+      fitImageToCanvas();
+      render();
     } catch (err) {
-      alert("Invalid JSON: " + err);
+      alert("Invalid labels JSON: " + err);
     }
   };
+
   fr.readAsText(file, "utf-8");
 });
 
@@ -950,7 +1088,6 @@ btnReOCR.addEventListener("click", async () => {
 });
 btnExportUpdatedJSON.addEventListener("click", () => {
   if (!invoiceData) return alert("Load a JSON first.");
-  // Optionally deep copy and export. Here we export current in-memory invoiceData (already updated).
   const blob = new Blob([JSON.stringify(invoiceData, null, 2)], {
     type: "application/json",
   });
@@ -1002,7 +1139,7 @@ function updateZoomUI() {
 }
 
 /** ------------------------------
- * Validation (same as v1.1)
+ * Validation (UI only)
  * ------------------------------ */
 function validate() {
   /** @type {string[]} */ const warnings = [];
@@ -1063,7 +1200,7 @@ function validateAndShow() {
 }
 
 /** ------------------------------
- * Exporters (unchanged) + Export Updated JSON above
+ * Exporters
  * ------------------------------ */
 function exportAnnotatedPNG() {
   const cs = document.createElement("canvas");
@@ -1109,8 +1246,8 @@ function drawLabelPillDirect(c2, text, x, y, color) {
   c2.fillText(text, x + padX, y + 12);
   c2.restore();
 }
+
 function exportLabelsJSON() {
-  const { warnings, omitted } = validate();
   const payload = {
     image: {
       filename: imageFilename || "image.png",
@@ -1128,14 +1265,15 @@ function exportLabelsJSON() {
       group_color: a.group_color,
       confidence: a.confidence,
     })),
-    notes: { warnings, omitted_null_fields: omitted },
   };
+
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json",
   });
   const base = (imageFilename || "image").replace(/\.(png|jpg|jpeg)$/i, "");
   triggerDownload(URL.createObjectURL(blob), `${base}-labels.json`);
 }
+
 function exportCOCO() {
   const cats = [];
   const nameToId = {};
@@ -1190,7 +1328,7 @@ function triggerDownload(url, filename) {
 }
 
 /** ------------------------------
- * Fit & boot (unchanged)
+ * Fit & boot
  * ------------------------------ */
 function fitImageToCanvas() {
   const wrap = document.querySelector(".stage-wrap");
@@ -1247,7 +1385,7 @@ window.addEventListener("resize", () => {
 })();
 
 /** ------------------------------
- * Click selection (unchanged)
+ * Click selection
  * ------------------------------ */
 canvas.addEventListener("click", (e) => {
   if (currentAction) return;
